@@ -14,6 +14,11 @@ pub struct StakersList<M: ManagedTypeApi> {
     pub user: ManagedAddress<M>,
     pub staked: BigUint<M>,
 }
+#[derive(TypeAbi, TopEncode, TopDecode, NestedDecode, NestedEncode, Clone)]
+pub struct StakersListAvia<M: ManagedTypeApi> {
+    pub user: ManagedAddress<M>,
+    pub staked: usize,
+}
 #[derive(TypeAbi, TopEncode, TopDecode)]
 pub struct UserStatistics<M: ManagedTypeApi> {
     pub staked: BigUint<M>,
@@ -30,6 +35,35 @@ pub struct Settings<M: ManagedTypeApi> {
     pub burn_or_circulate: bool,
     pub minimum: BigUint<M>,
     pub withdraw_fee: u64,
+}
+
+#[derive(TypeAbi, TopEncode, TopDecode)]
+pub struct AVIASettings<M: ManagedTypeApi> {
+    pub avia_id: TokenIdentifier<M>,
+    pub bonus_apr: u64,
+    pub min_stake_deposit: BigUint<M>,
+    pub max_avia_staked: u64
+}
+
+#[derive(TypeAbi, TopEncode, TopDecode)]
+pub struct AviatorStatistics<M: ManagedTypeApi> {
+    pub avia_token: TokenIdentifier<M>,
+    pub percentage_bonus: u64,
+    pub total_percentage_bonus: u64,
+    pub aviator_count: u64,
+    pub produced_rewards: BigUint<M>,
+    pub min_stake_deposit: BigUint<M>,
+    pub max_avia_staked: u64,
+    pub avia_rewards: BigUint<M>
+}
+
+#[derive(TypeAbi, TopEncode, TopDecode)]
+pub struct UserAviatorStatistics<M: ManagedTypeApi> {
+    pub staked_aviators_count: u64,
+    pub current_apr: u64,
+    pub produced_rewards: BigUint<M>,
+    pub rewards: BigUint<M>,
+    pub staked_aviators:ManagedVec<M,u64>
 }
 #[multiversx_sc::module]
 pub trait StakingStorage {
@@ -136,6 +170,7 @@ pub trait StakingStorage {
     #[storage_mapper("stakingModuleState")]
     fn staking_module_state(&self) -> SingleValueMapper<bool>;
 
+    //AVAILABLE REWARDS FOR STAKERS
     #[view(getRewards)]
     #[storage_mapper("rewards")]
     fn rewards(&self) -> SingleValueMapper<BigUint>;
@@ -149,4 +184,80 @@ pub trait StakingStorage {
     #[view(getBurnTokensUser)]
     #[storage_mapper("BurnedTokensUser")]
     fn burned_tokens_user(&self, user: &ManagedAddress) -> SingleValueMapper<BigUint>;
+
+    //IT WILL SET ACTION WHAT REWARDS SHOULD DO UPON STAKING TOKENS (CLAIM OR REINVEST THEM - REINVEST AS DEFAULT)
+    #[view(getActionRewards)]
+    #[storage_mapper("ActionRewards")]
+    fn action_rewards(&self, user: &ManagedAddress) -> SingleValueMapper<bool>;
+
+
+
+
+//AVIATORS STAKING
+    //AVIATORS TOKEN ID
+    #[view(getAviaToken)]
+    #[storage_mapper("aviaToken")]
+    fn avia_token(&self) -> SingleValueMapper<TokenIdentifier>;
+
+    //BONUS FOR AVIATOR STAKING
+    #[view(getPercentageBonus)]
+    #[storage_mapper("PercentageBonus")]
+    fn percentage_bonus(&self) -> SingleValueMapper<u64>;
+
+    //LIST OF AVIATOR STAKERS UPDATING WITH EVERY CHANGE
+    #[view(getStakersListAvia)]
+    #[storage_mapper("StakersListAvia")]
+    fn stakers_list_avia(&self) -> LinkedListMapper<StakersListAvia<Self::Api>>;
+
+    //COUNTING UP NODES FOR EACH AVIATOR STAKER
+    #[view(getAviaNextNodeStaking)]
+    #[storage_mapper("nextAviaNodeStaking")]
+    fn next_avia_node_staking(&self) -> SingleValueMapper<u32>;
+
+    //SPECIFIC NODE OF AVIATOR USER
+    #[view(getUserAviaNode)]
+    #[storage_mapper("userAviaNode")]
+    fn user_avia_node(&self, user: &ManagedAddress) -> SingleValueMapper<u32>;
+    
+    //STORAGE REWARDS FOR AVIATOR STAKER
+    #[view(getStorageAviaRewards)]
+    #[storage_mapper("storageAviaRewards")]
+    fn storage_avia_rewards(&self, staker: &ManagedAddress) -> SingleValueMapper<BigUint>;
+    
+    //TIME WHEN BONUS APR WAS LAST CHANGED
+    #[view(getAPRAviaLastTime)]
+    #[storage_mapper("APRAviaLastTime")]
+    fn apr_avia_last_time(&self, staker: &ManagedAddress) -> SingleValueMapper<u64>;
+    
+    //STAKED AVIATORS FOR USER
+    #[view(getStakedAviators)]
+    #[storage_mapper("StakedAviators")]
+    fn staked_aviators(&self, user: &ManagedAddress) -> UnorderedSetMapper<u64>;
+
+    //STAKED AVIATORS ALL COUNT
+    #[view(getStakedAviatorsCount)]
+    #[storage_mapper("stakedAviatorsCount")]
+    fn staked_aviators_count(&self) -> SingleValueMapper<u64>;
+
+    //AVIATOR ALL PRODUCED REWARDS
+    #[view(getAviaProducedRewards)]
+    #[storage_mapper("aviaProducedRewards")]
+    fn avia_produced_rewards(&self) -> SingleValueMapper<BigUint>;
+
+    //USER AVIATOR ALL PRODUCED REWARDS
+    #[view(getAviaProducedRewardsUser)]
+    #[storage_mapper("aviaProducedRewardsUser")]
+    fn avia_produced_rewards_user(&self, user: &ManagedAddress) -> SingleValueMapper<BigUint>;
+
+    #[view(getMinAviaDeposit)]
+    #[storage_mapper("minAviaDeposit")]
+    fn min_avia_deposit(&self) -> SingleValueMapper<BigUint>;
+
+    #[view(getMaxAviaStaked)]
+    #[storage_mapper("maxAviaStaked")]
+    fn max_avia_staked(&self) -> SingleValueMapper<u64>;
+
+    #[view(getAviaSuppliedRewards)]
+    #[storage_mapper("aviaSuppliedRewards")]
+    fn avia_supplied_rewards(&self) -> SingleValueMapper<BigUint>;
 }

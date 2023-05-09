@@ -10,14 +10,18 @@
             "verbose": true,
             "bytecode": "output/staking.wasm",
             "recall-nonce": true,
-            "pem": "../wallet.pem",
-            "gas-limit": 40000000,
+            "pem": "../staking.pem",
+            "gas-limit": 120000000,
             "arguments": [
                 "str:AERO-458bbf",
-                1500,
+                3000,
                 1296000,
                 1000000000000000000,
-                150
+                150,
+                "str:AVIA-efb152",
+                100,
+                1000000000000000000000,
+                10
             ],
             "send": true,
             "outfile": "STAKING.json"
@@ -26,14 +30,18 @@
             "verbose": true,
             "bytecode": "output/staking.wasm",
             "recall-nonce": true,
-            "pem": "../wallet.pem",
-            "gas-limit": 40000000,
+            "pem": "../staking.pem",
+            "gas-limit": 120000000,
             "arguments": [
                 "str:AERO-458bbf",
-                1500,
+                3000,
                 1296000,
                 1000000000000000000,
-                150 
+                150,
+                "str:AVIA-efb152",
+                100,
+                1000000000000000000000,
+                10
             ],
             "send": true,
             "outfile": "STAKING.json"
