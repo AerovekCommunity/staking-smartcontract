@@ -1,11 +1,24 @@
 multiversx_sc::imports!();
 use crate::err_and_const::{
-    ERR_LOCK_TIME, ERR_LOW_AMOUNT_DEPOSIT, ERR_MODULE_DEACTIVATED, ERR_NOTHING_STAKED,
-    ERR_WITHDRAW, ERR_WRONG_TOKEN, PERCENTAGE, YEAR_IN_SECONDS,
+    ERR_LOCK_TIME, 
+    ERR_LOW_AMOUNT_DEPOSIT, 
+    ERR_MODULE_DEACTIVATED, 
+    ERR_WITHDRAW, 
+    ERR_WRONG_TOKEN, 
+    PERCENTAGE, 
+    YEAR_IN_SECONDS,
+    AVIA_POWER,
+    DECIMALS,
+    ERR_AVIA_STAKED
 };
-use crate::storage::{StakersList, StakingStatistics, UserStatistics};
+use crate::storage::{
+    StakersList, 
+    StakingStatistics, 
+    UserStatistics
+};
+
 #[multiversx_sc::module]
-pub trait Staking: crate::storage::StakingStorage {
+pub trait Staking: crate::storage::StakingStorage + crate::shared_functions::SharedFunctions + crate::avia_staking::AVIAStaking{
     //DEPOSIT TOKENS
     #[payable("*")]
     #[endpoint(depositAERO)]
@@ -21,7 +34,20 @@ pub trait Staking: crate::storage::StakingStorage {
         );
 
         if self.stake_deposit(&user).get() > BigUint::zero() {
-            self.safe_rewards(&user);
+            let state = self.action_rewards(&user).get();
+            match state {
+                //CLAIM
+                true => {
+                    self.safe_rewards(&user);
+                    self.avia_safe_reinvest(&user);
+                   
+                }
+                //REINVEST
+                false => {
+                    self.safe_reinvest_rewards(&user);
+                }
+            }
+           
         }
         self.save_position(&user);
         self.total_staked().update(|value| *value += &amount);
@@ -29,6 +55,7 @@ pub trait Staking: crate::storage::StakingStorage {
         self.stake_deposit(&user).update(|value| *value += &amount);
         self.lock_tokens(&user, current_time);
         self.update_list(&user);
+        
     }
     //WITHDRAW TOKENS
     #[endpoint(withdrawAERO)]
@@ -36,6 +63,9 @@ pub trait Staking: crate::storage::StakingStorage {
         let current_time = self.blockchain().get_block_timestamp();
         let user = self.blockchain().get_caller();
         let deposit_amount = self.stake_deposit(&user).get();
+        let rest_amount = &deposit_amount - &amount;
+        let min_amount = self.min_avia_deposit().get() * self.staked_aviators(&user).len() as u64;
+        require!(rest_amount >= min_amount , ERR_AVIA_STAKED);
         let token_id = self.token_id().get();
         require!(amount <= deposit_amount, ERR_WITHDRAW);
         let withdraw = self.user_withdraw_fee(&amount, &user);
@@ -45,6 +75,7 @@ pub trait Staking: crate::storage::StakingStorage {
         self.stake_deposit(&user).update(|value| *value -= &amount);
         self.total_staked().update(|value| *value -= &amount);
         self.update_list(&user);
+        self.avia_safe(&user); 
     }
     //CLAIM REWARD
     #[endpoint(claimAERO)]
@@ -53,8 +84,12 @@ pub trait Staking: crate::storage::StakingStorage {
             self.staking_module_state().get() == true,
             ERR_MODULE_DEACTIVATED
         );
+        let current_time = self.blockchain().get_block_timestamp();
         let user = &self.blockchain().get_caller();
+        self.lock_tokens(&user, current_time);
         self.safe_rewards(&user);
+        self.avia_safe(&user);
+        
     }
     //REINVEST REWARD
     #[endpoint(reinvestAERO)]
@@ -68,10 +103,11 @@ pub trait Staking: crate::storage::StakingStorage {
         self.safe_reinvest_rewards(&user);
         self.lock_tokens(&user, current_time);
         self.update_list(&user);
+        self.avia_safe_reinvest(&user);
+      
     }
 
     //CALCULATION OF REWARD
-    #[view(rewardAERO)]
     fn calculate_reward(&self, user: &ManagedAddress) -> BigUint {
         let my_stake = self.is_not_empty(self.stake_deposit(&user));
         let rps_position = self.is_not_empty(self.new_position(user));
@@ -84,12 +120,7 @@ pub trait Staking: crate::storage::StakingStorage {
         self.save_position(user);
         rewards
     }
-    fn is_not_empty(&self, mapper: SingleValueMapper<BigUint>) -> BigUint {
-        if mapper.is_empty() {
-            sc_panic!(ERR_NOTHING_STAKED);
-        }
-        mapper.get()
-    }
+   
 
     #[view(AEROStatistics)]
     fn staking_statistics(&self) -> StakingStatistics<Self::Api> {
@@ -122,6 +153,11 @@ pub trait Staking: crate::storage::StakingStorage {
         };
         user_stats
     }
+    fn save_position(&self, user: &ManagedAddress) {
+        let rps_acumulated = self.rps_acumulated().get();
+        let rps = rps_acumulated + self.rps_calculated();
+        self.new_position(user).set(rps);
+    }
     //SAVING REWARD PER SECOND INTO ACUMULATOR
     fn rps(&self) {
         let current_time = self.blockchain().get_block_timestamp();
@@ -147,7 +183,7 @@ pub trait Staking: crate::storage::StakingStorage {
         let not_enough = self.not_enough(&rewards);
         if !not_enough {
             self.send().direct_esdt(user, &token_id, 0u64, &rewards);
-            self.produced_rewards().update(|value| *value += &rewards);
+            self.produced_rewards().update(|value| * value += &rewards);
             self.produced_rewards_user(user)
                 .update(|value| *value += &rewards);
         } else {
@@ -171,20 +207,6 @@ pub trait Staking: crate::storage::StakingStorage {
                 .update(|amount| *amount += &rewards);
         }
         rewards
-    }
-
-    fn save_position(&self, user: &ManagedAddress) {
-        let rps_acumulated = self.rps_acumulated().get();
-        let rps = rps_acumulated + self.rps_calculated();
-        self.new_position(user).set(rps);
-    }
-
-    fn lock_tokens(&self, user: &ManagedAddress, current_time: u64) {
-        if self.lock_staking_state().get() {
-            let lock_time = self.lock_time().get();
-            let future_time = current_time + lock_time;
-            self.unlock_future_time(&user).set(future_time);
-        }
     }
 
     fn unlock_tokens(&self, user: &ManagedAddress, current_time: u64) {
@@ -247,13 +269,83 @@ pub trait Staking: crate::storage::StakingStorage {
         }
     }
 
-    fn not_enough(&self, rewards: &BigUint) -> bool {
-        let available_rewards = self.rewards().get();
-        if rewards < &available_rewards {
-            self.rewards().update(|value| *value -= rewards);
-            false
-        } else {
-            true
+    
+
+    #[endpoint(setRewardsActions)]
+    fn rewards_action(&self, state: bool){
+        let user = self.blockchain().get_caller();
+        match state {
+            //CLAIM
+            true => {
+                self.action_rewards(&user).set(true);
+            }
+            //REINVEST
+            false => {
+                self.action_rewards(&user).set(false);
+            }
         }
     }
+
+    #[view(rewardAERO)]
+    fn get_all_rewards(&self, user: &ManagedAddress) -> BigUint {
+        let avia_rewards = self.calculate_avia_reward(user);
+        let aero_rewards = self.calculate_reward(user);
+        let rewards = avia_rewards + aero_rewards;
+        rewards
+    }
+
+    #[view(getDaoVoteWeight)]
+    fn get_dao_vote_weight_view(
+        &self,
+        address: ManagedAddress,
+        _token: OptionalValue<TokenIdentifier>,
+    ) -> BigUint {
+        let staked = self.stake_deposit(&address).get();
+        let real_staked = staked;
+        let avia_size = self.staked_aviators(&address).len() as u64;
+        let avia_power =  BigUint::from(avia_size) *  BigUint::from(AVIA_POWER) * BigUint::from(10u64).pow(DECIMALS);
+        let result= real_staked + avia_power;
+        result
+    }
+
+    #[view(getDaoMembers)]
+    fn get_dao_members_view(
+        &self,
+        _token: OptionalValue<TokenIdentifier>,
+    ) -> MultiValueEncoded<MultiValue2<ManagedAddress, BigUint>> {
+        let mut members = MultiValueEncoded::new();
+        for user in self.stakers_list().iter(){
+            let user_address = user.clone().into_value().user;
+            let staked = user.into_value().staked;
+            if staked != BigUint::zero(){
+            let real_staked = staked;
+            let avia_size = self.staked_aviators(&user_address).len() as u64;
+            let avia_power =  BigUint::from(avia_size) *  BigUint::from(AVIA_POWER) * BigUint::from(10u64).pow(DECIMALS);
+            let result = real_staked + avia_power;
+            members.push((user_address,result).into());
+        }
+        }
+        members
+    }
+
+    #[view(hasAviaStaked)]
+    fn has_avia_staked(&self, user: &ManagedAddress) -> bool{
+        if self.staked_aviators(&user).is_empty() {
+            return false
+        }
+        return true
+    }
+
+    fn avia_safe(&self, user: &ManagedAddress){
+        if self.stake_deposit(&user).get() > BigUint::zero() && !self.staked_aviators(&user).is_empty() {
+                    self.safe_avia_rewards(&user);
+        }
+    }
+
+    fn avia_safe_reinvest(&self, user: &ManagedAddress){
+        if self.stake_deposit(user).get() > BigUint::zero() && !self.staked_aviators(&user).is_empty() {
+        self.safe_avia_reinvest_rewards(&user);  
+        }
+    }
+
 }

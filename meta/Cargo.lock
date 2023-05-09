@@ -150,6 +150,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2382f75942f4b3be3690fe4f86365e9c853c1587d6ee58212cebf6e2a9ccd101"
 
 [[package]]
+name = "convert_case"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec182b0ca2f35d8fc196cf3404988fd8b8c739a4d270ff118a398feb0cbec1ca"
+dependencies = [
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "endian-type"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -339,9 +348,9 @@ checksum = "8452105ba047068f40ff7093dd1d9da90898e63dd61736462e9cdda6a90ad3c3"
 
 [[package]]
 name = "multiversx-sc"
-version = "0.39.5"
+version = "0.41.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5efb91bb23e4aca22b77c9836df7fee996a95c217c37ce371ce9175687d71451"
+checksum = "16a252c2a767cd5cac53b484030d00f25c7dc727ebb188a71045bfc4d2dfbe52"
 dependencies = [
  "bitflags",
  "hashbrown 0.13.2",
@@ -377,9 +386,9 @@ dependencies = [
 
 [[package]]
 name = "multiversx-sc-derive"
-version = "0.39.5"
+version = "0.41.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d42cc3c603014e4e57657ff73166f3596bd5b0f2d99f89ba35e32d11b4b7f45"
+checksum = "3f470371bc6befc8fdb310b165733f0dee17c7eae361632a99077b99b0d8e371"
 dependencies = [
  "hex",
  "proc-macro2",
@@ -390,13 +399,15 @@ dependencies = [
 
 [[package]]
 name = "multiversx-sc-meta"
-version = "0.39.5"
+version = "0.41.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df15e8f02349db3f4d7f12611eb33d0f595f634cf83a78e940e9c3c9f24eb0a6"
+checksum = "7579edac20b7e0bae9c8c0003aac8b84985ada275a04490304233e4eb043b677"
 dependencies = [
  "clap",
  "colored",
  "common-path",
+ "convert_case",
+ "hex",
  "lazy_static",
  "multiversx-sc",
  "pathdiff",
@@ -694,6 +705,12 @@ name = "unicode-ident"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "84a22b9f218b40614adcb3f4ff08b703773ad44fa9423e4e0d346d5db86e4ebc"
+
+[[package]]
+name = "unicode-segmentation"
+version = "1.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1dd624098567895118886609431a7c3b8f516e41d30e0643f03d94592a147e36"
 
 [[package]]
 name = "version_check"
