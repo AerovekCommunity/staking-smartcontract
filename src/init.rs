@@ -31,7 +31,8 @@ crate::storage::StakingStorage
         avia_token: TokenIdentifier, 
         per_bonus: u64, 
         min_avia_deposit: BigUint, 
-        max_avia_staked: u64
+        max_avia_staked: u64,
+        avia_power: BigUint
     ){
         require!(apr > 1u64, ERR_LOW_APR);
         require!(locktime > 1u64, ERR_LOW_LOCKTIME);
@@ -41,6 +42,7 @@ crate::storage::StakingStorage
         self.initialize_staking(apr,locktime,min_stake,fee,per_bonus, min_avia_deposit,max_avia_staked);
         self.token_id().set_if_empty(token_id);
         self.avia_token().set_if_empty(avia_token);
+        self.avia_power().set_if_empty(avia_power);
     }
 
     fn initialize_staking(&self,apr:u64,locktime:u64,min_stake: BigUint,fee: u64, per_bonus: u64, min_avia_deposit: BigUint, max_avia_staked: u64){

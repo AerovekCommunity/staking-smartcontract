@@ -20,6 +20,4 @@ pub const ERR_LOW_FEE: &str = "Low Fee";
 pub const ERR_ESDT_INVALID: &str = "ESDT not valid form";
 pub const YEAR_IN_SECONDS : u64 = 360 * 24 * 60 * 60;
 pub const PERCENTAGE : u64 = 10_000;
-pub const AVIA_POWER: u64 = 5_000;
 pub const NFT_AMOUNT: u64 = 1;
-pub const DECIMALS: u32 = 18;

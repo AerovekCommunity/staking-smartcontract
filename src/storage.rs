@@ -260,4 +260,8 @@ pub trait StakingStorage {
     #[view(getAviaSuppliedRewards)]
     #[storage_mapper("aviaSuppliedRewards")]
     fn avia_supplied_rewards(&self) -> SingleValueMapper<BigUint>;
+
+    #[view(getAviaPower)]
+    #[storage_mapper("aviaPower")]
+    fn avia_power(&self) -> SingleValueMapper<BigUint>;
 }
