@@ -58,6 +58,14 @@ pub trait StakingSettings: crate::storage::StakingStorage + crate::staking::Stak
         require!(minimum > 0u64, ERR_LOW);
         self.minimum_stake().set(minimum);
     }
+
+     //CHANGE AVIA POWER
+     #[only_owner]
+     #[endpoint(aviaPower)]
+     fn change_avia_power(&self, power: BigUint) {
+         require!(power > 0u64, ERR_LOW);
+         self.avia_power().set(power);
+     }
     //LOCK STATE OF STAKING
     #[only_owner]
     #[endpoint(LockStakeState)]

@@ -14,14 +14,15 @@
             "gas-limit": 120000000,
             "arguments": [
                 "str:AERO-458bbf",
-                3000,
+                1500,
                 1296000,
                 1000000000000000000,
                 150,
                 "str:AVIA-efb152",
                 100,
                 1000000000000000000000,
-                10
+                10,
+                5000000000000000000000
             ],
             "send": true,
             "outfile": "STAKING.json"
@@ -31,17 +32,18 @@
             "bytecode": "output/staking.wasm",
             "recall-nonce": true,
             "pem": "../staking.pem",
-            "gas-limit": 120000000,
+            "gas-limit": 130000000,
             "arguments": [
                 "str:AERO-458bbf",
-                3000,
+                1500,
                 1296000,
                 1000000000000000000,
                 150,
                 "str:AVIA-efb152",
                 100,
                 1000000000000000000000,
-                10
+                10,
+                5000000000000000000000
             ],
             "send": true,
             "outfile": "STAKING.json"

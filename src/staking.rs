@@ -7,8 +7,6 @@ use crate::err_and_const::{
     ERR_WRONG_TOKEN, 
     PERCENTAGE, 
     YEAR_IN_SECONDS,
-    AVIA_POWER,
-    DECIMALS,
     ERR_AVIA_STAKED
 };
 use crate::storage::{
@@ -38,9 +36,8 @@ pub trait Staking: crate::storage::StakingStorage + crate::shared_functions::Sha
             match state {
                 //CLAIM
                 true => {
-                    self.safe_rewards(&user);
                     self.avia_safe_reinvest(&user);
-                   
+                    self.safe_rewards(&user);  
                 }
                 //REINVEST
                 false => {
@@ -66,6 +63,7 @@ pub trait Staking: crate::storage::StakingStorage + crate::shared_functions::Sha
         let rest_amount = &deposit_amount - &amount;
         let min_amount = self.min_avia_deposit().get() * self.staked_aviators(&user).len() as u64;
         require!(rest_amount >= min_amount , ERR_AVIA_STAKED);
+        self.avia_safe(&user); 
         let token_id = self.token_id().get();
         require!(amount <= deposit_amount, ERR_WITHDRAW);
         let withdraw = self.user_withdraw_fee(&amount, &user);
@@ -75,7 +73,6 @@ pub trait Staking: crate::storage::StakingStorage + crate::shared_functions::Sha
         self.stake_deposit(&user).update(|value| *value -= &amount);
         self.total_staked().update(|value| *value -= &amount);
         self.update_list(&user);
-        self.avia_safe(&user); 
     }
     //CLAIM REWARD
     #[endpoint(claimAERO)]
@@ -87,9 +84,8 @@ pub trait Staking: crate::storage::StakingStorage + crate::shared_functions::Sha
         let current_time = self.blockchain().get_block_timestamp();
         let user = &self.blockchain().get_caller();
         self.lock_tokens(&user, current_time);
-        self.safe_rewards(&user);
         self.avia_safe(&user);
-        
+        self.safe_rewards(&user);   
     }
     //REINVEST REWARD
     #[endpoint(reinvestAERO)]
@@ -100,11 +96,10 @@ pub trait Staking: crate::storage::StakingStorage + crate::shared_functions::Sha
             ERR_MODULE_DEACTIVATED
         );
         let user = &self.blockchain().get_caller();
+        self.avia_safe_reinvest(&user);
         self.safe_reinvest_rewards(&user);
         self.lock_tokens(&user, current_time);
-        self.update_list(&user);
-        self.avia_safe_reinvest(&user);
-      
+        self.update_list(&user);   
     }
 
     //CALCULATION OF REWARD
@@ -303,7 +298,7 @@ pub trait Staking: crate::storage::StakingStorage + crate::shared_functions::Sha
         let staked = self.stake_deposit(&address).get();
         let real_staked = staked;
         let avia_size = self.staked_aviators(&address).len() as u64;
-        let avia_power =  BigUint::from(avia_size) *  BigUint::from(AVIA_POWER) * BigUint::from(10u64).pow(DECIMALS);
+        let avia_power =  BigUint::from(avia_size) * self.avia_power().get();
         let result= real_staked + avia_power;
         result
     }
@@ -320,7 +315,7 @@ pub trait Staking: crate::storage::StakingStorage + crate::shared_functions::Sha
             if staked != BigUint::zero(){
             let real_staked = staked;
             let avia_size = self.staked_aviators(&user_address).len() as u64;
-            let avia_power =  BigUint::from(avia_size) *  BigUint::from(AVIA_POWER) * BigUint::from(10u64).pow(DECIMALS);
+            let avia_power =  BigUint::from(avia_size) * self.avia_power().get();
             let result = real_staked + avia_power;
             members.push((user_address,result).into());
         }

@@ -5,9 +5,9 @@
 ////////////////////////////////////////////////////
 
 // Init:                                 1
-// Endpoints:                           68
+// Endpoints:                           70
 // Async Callback (empty):               1
-// Total number of exported functions:  70
+// Total number of exported functions:  72
 
 #![no_std]
 #![feature(lang_items)]
@@ -57,11 +57,13 @@ multiversx_sc_wasm_adapter::endpoints! {
         getMinAviaDeposit
         getMaxAviaStaked
         getAviaSuppliedRewards
+        getAviaPower
         supplyRewards
         AviaRewards
         stakingState
         changeAPR
         StakeMinimum
+        aviaPower
         LockStakeState
         EarlyWithdrawState
         changeLockTime
