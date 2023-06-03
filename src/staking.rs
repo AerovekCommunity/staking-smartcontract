@@ -60,19 +60,29 @@ pub trait Staking: crate::storage::StakingStorage + crate::shared_functions::Sha
         let current_time = self.blockchain().get_block_timestamp();
         let user = self.blockchain().get_caller();
         let deposit_amount = self.stake_deposit(&user).get();
-        let rest_amount = &deposit_amount - &amount;
-        let min_amount = self.min_avia_deposit().get() * self.staked_aviators(&user).len() as u64;
-        require!(rest_amount >= min_amount , ERR_AVIA_STAKED);
-        self.avia_safe(&user); 
         let token_id = self.token_id().get();
         require!(amount <= deposit_amount, ERR_WITHDRAW);
-        let withdraw = self.user_withdraw_fee(&amount, &user);
+        self.avia_rest_amount(&user, &deposit_amount, &amount);
+        self.avia_safe(&user); 
+        let withdraw = self.user_withdraw_fee(&amount, &user, current_time);
         self.unlock_tokens(&user, current_time);
         self.safe_rewards(&user);
         self.send().direct_esdt(&user, &token_id, 0u64, &withdraw);
         self.stake_deposit(&user).update(|value| *value -= &amount);
         self.total_staked().update(|value| *value -= &amount);
         self.update_list(&user);
+    }
+    fn avia_rest_amount(&self, user: &ManagedAddress, deposit_amount: &BigUint, amount: &BigUint){
+        if !self.staked_aviators(&user).is_empty() {
+            let min_amount = self.min_avia_deposit().get() * self.staked_aviators(&user).len() as u64;
+            if deposit_amount <= amount {
+               let rest_amount = BigUint::zero();
+               require!(rest_amount >= min_amount , ERR_AVIA_STAKED);
+            } else {
+                let rest_amount = deposit_amount - amount;
+                require!(rest_amount >= min_amount , ERR_AVIA_STAKED);
+            }
+        }
     }
     //CLAIM REWARD
     #[endpoint(claimAERO)]
@@ -240,8 +250,8 @@ pub trait Staking: crate::storage::StakingStorage + crate::shared_functions::Sha
         self.user_node(user).set_if_empty(node);
     }
 
-    fn user_withdraw_fee(&self, withdraw: &BigUint, user: &ManagedAddress) -> BigUint {
-        if self.early_withdrawing_state().get() && self.lock_staking_state().get() {
+    fn user_withdraw_fee(&self, withdraw: &BigUint, user: &ManagedAddress, current_time: u64) -> BigUint {
+        if self.early_withdrawing_state().get() && self.lock_staking_state().get() && self.unlock_future_time(&user).get() > current_time {
             let fee = self.withdraw_fee().get();
             let token_id = self.token_id().get();
             let withdraw_left = withdraw * fee / PERCENTAGE;
